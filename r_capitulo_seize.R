@@ -1,5 +1,5 @@
 # Pacotes
-library(readr)   # para ler CSV
+library(readr)   # leitura de CSV
 library(dplyr)   # manipulação
 library(tibble)  # melhor visualização
 
@@ -23,8 +23,9 @@ carregar_tabelas <- function(pasta) {
   for (arq in arquivos) {
     nome <- tools::file_path_sans_ext(basename(arq)) # nome do arquivo sem extensão
     
-    # Ler CSV
-    df <- read_csv(arq, show_col_types = FALSE)
+    # Ler CSV com separador ";"
+    df <- read_delim(arq, delim = ";", show_col_types = FALSE,
+                     locale = locale(decimal_mark = ".", grouping_mark = ",")) 
     
     # Guardar na lista
     tabelas[[nome]] <- df
@@ -37,6 +38,14 @@ carregar_tabelas <- function(pasta) {
     print(colnames(df))
     cat("Visualização inicial:\n")
     print(head(df, 5))  # mostra as 5 primeiras linhas
+    
+    # Mostrar possíveis problemas de parsing
+    problemas <- problems(df)
+    if (nrow(problemas) > 0) {
+      cat("\n⚠️ Problemas encontrados (mostrando até 5):\n")
+      print(head(problemas, 5))
+    }
+    
     cat("=============================\n")
   }
   
@@ -47,3 +56,28 @@ carregar_tabelas <- function(pasta) {
 pasta_dados <- "C:/Users/Big Data/Documents/Master UFCG/Semestre 2025.2/Tabelas"
 
 tabelas <- carregar_tabelas(pasta_dados)
+
+
+# Função de pré-processamento coletivo
+preprocess_coletivo <- function(df) {
+  df %>%
+    janitor::clean_names() %>%
+    mutate(across(
+      where(is.character),
+      ~ iconv(.x, from = "", to = "UTF-8", sub = "byte") %>% trimws()
+    ))
+}
+
+# Usando a função pre-processamento
+
+tabelas <- lapply(tabelas, preprocess_coletivo)
+
+# Mostrar nomes das tabelas carregadas
+names(tabelas)
+
+# Olhar algumas colunas depois do pré-processamento
+head(tabelas[[1]])
+glimpse(tabelas[[1]])
+
+
+
