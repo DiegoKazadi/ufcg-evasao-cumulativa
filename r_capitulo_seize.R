@@ -181,6 +181,9 @@ taxas_evasao <- calcular_taxas_cumulativas(alunos_final)
 # Visualizar no terminal (sem gráficos)
 print(head(taxas_evasao, 20))
 
+# Visualizar todos os valores dos 2 currículos
+print(taxas_evasao, n = nrow(taxas_evasao))
+s
 # =====================================================
 # 6. Diagnóstico de período de ingresso
 # =====================================================
