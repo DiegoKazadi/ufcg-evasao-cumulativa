@@ -139,43 +139,40 @@ filtrar_evasao <- function(df) {
 calcular_taxas_cumulativas <- function(df) {
   
   # Filtrar períodos válidos por currículo
-  df <- df %>%
+  df_filtrado <- df %>%
     filter(
       (curriculo == 1999 & periodo_de_ingresso >= 2011.1 & periodo_de_ingresso <= 2017.2) |
         (curriculo == 2017 & periodo_de_ingresso >= 2018.1 & periodo_de_ingresso <= 2022.2)
     )
   
-  # Totais de ingressantes por período de ingresso (N0)
-  totais <- df %>%
+  # Totais de ingressantes por coorte
+  totais <- df_filtrado %>%
     group_by(curriculo, periodo_de_ingresso) %>%
     summarise(total_ingressantes = n(), .groups = "drop")
   
-  # Totais de evasões reais
-  evasoes <- df %>%
+  # Totais de evasões reais por coorte
+  evasoes <- df_filtrado %>%
     filtrar_evasao() %>%
     group_by(curriculo, periodo_de_ingresso) %>%
     summarise(total_evasoes = n(), .groups = "drop")
   
-  # Calcular evasões acumuladas e taxa cumulativa correta
+  # Juntar e calcular taxa por coorte
   dados <- totais %>%
     left_join(evasoes, by = c("curriculo", "periodo_de_ingresso")) %>%
-    mutate(total_evasoes = ifelse(is.na(total_evasoes), 0, total_evasoes)) %>%
-    arrange(curriculo, periodo_de_ingresso) %>%
-    group_by(curriculo) %>%
-    mutate(evasoes_acumuladas = cumsum(total_evasoes)) %>%
-    ungroup() %>%
-    # Garantir que o denominador seja o total de ingressantes do período de ingresso
-    left_join(
-      totais %>% select(curriculo, periodo_de_ingresso, total_ingressantes) %>% rename(N0 = total_ingressantes),
-      by = c("curriculo", "periodo_de_ingresso")
+    mutate(
+      total_evasoes = ifelse(is.na(total_evasoes), 0, total_evasoes),
+      taxa_evasao_cumulativa = round((total_evasoes / total_ingressantes) * 100, 2)
     ) %>%
-    mutate(taxa_cumulativa = round((evasoes_acumuladas / N0) * 100, 2)) %>%
-    select(curriculo, periodo_de_ingresso, total_ingressantes, total_evasoes,
-           evasoes_acumuladas, taxa_cumulativa)
+    select(
+      curriculo,
+      periodo_de_ingresso,
+      total_ingressantes,
+      total_evasoes,
+      taxa_evasao_cumulativa
+    )
   
   return(dados)
 }
-
 # =====================================================
 # 5. Execução
 # =====================================================
@@ -188,7 +185,7 @@ print(head(taxas_evasao, 20))
 
 # Visualizar todos os valores dos 2 currículos
 print(taxas_evasao, n = nrow(taxas_evasao))
-s
+
 # =====================================================
 # 6. Diagnóstico de período de ingresso
 # =====================================================
@@ -198,3 +195,4 @@ print(sort(unique(alunos_final$periodo_de_ingresso)))
 
 # Frequência por período
 print(table(alunos_final$periodo_de_ingresso))
+  
