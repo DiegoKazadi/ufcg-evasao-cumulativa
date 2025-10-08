@@ -90,44 +90,56 @@ preprocess_individual <- function(df) {
       ~ iconv(.x, from = "", to = "UTF-8", sub = "byte") %>% trimws()
     ))
 }
-
-# Carregar apenas a tabela de interesse
+# =====================================================
+# 1. Carregar tabela de interesse
+# =====================================================
 alunos_final <- tabelas[["alunos-final"]]
 
-# Ver os nomes das colunas
-colnames(alunos_final)
+# Verificar estrutura
+cat("Colunas disponíveis:\n")
+print(colnames(alunos_final))
 
-# Visualizar as 5 primeiras linhas
-head(alunos_final, 5)
+cat("\nVisualização das 5 primeiras linhas:\n")
+print(head(alunos_final, 5))
+
+cat("\nPrimeiros valores de periodo_de_ingresso:\n")
+print(head(alunos_final$periodo_de_ingresso))
 
 # =====================================================
 # 2. Enriquecimento dos dados
 # =====================================================
 
 # Garantir ano e semestre separados
+# Observação: no seu formato, semestre 1 vem com .1 e semestre 2 com .2
+# Logo, a condição correta é: se a parte decimal é 0.1 → 1º semestre; se é 0.2 → 2º semestre
 alunos_final <- alunos_final %>%
   mutate(
     ano_ingresso = floor(periodo_de_ingresso),
-    semestre_ingresso = ifelse(periodo_de_ingresso %% 1 == 0.1, 1, 2)
+    semestre_ingresso = ifelse(abs(periodo_de_ingresso %% 1 - 0.1) < 1e-6, 1, 2)
   )
+
+# Confirmar criação das novas colunas
+cat("\nVerificando colunas criadas:\n")
+print(head(alunos_final %>%
+             select(periodo_de_ingresso, ano_ingresso, semestre_ingresso), 10))
 
 # =====================================================
 # 3. Verificação de integridade
 # =====================================================
-
-# Verificar se há currículos em anos incompatíveis
 check_inconsistencias <- alunos_final %>%
   filter((ano_ingresso < 2018 & curriculo == 2017) |
            (ano_ingresso >= 2018 & curriculo == 1999)) %>%
   distinct(matricula, ano_ingresso, curriculo)
 
 # Mostrar inconsistências encontradas
+cat("\n==============================\n")
 if (nrow(check_inconsistencias) > 0) {
-  cat("️ Inconsistências encontradas:\n")
+  cat("⚠️ Inconsistências encontradas:\n")
   print(check_inconsistencias)
 } else {
-  cat(" Nenhuma inconsistência encontrada.\n")
+  cat("✅ Nenhuma inconsistência encontrada.\n")
 }
+cat("==============================\n")
 
 # =====================================================
 # 4. Funções auxiliares
