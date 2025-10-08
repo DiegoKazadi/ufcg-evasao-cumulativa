@@ -58,9 +58,10 @@ pasta_dados <- "C:/Users/Big Data/Documents/Master UFCG/Semestre 2025/Tabelas"
 # Usando a função no seu caminho (linux)
 pasta_dados <- "/home/diego/Documentos/Tabelas"
 
+# Colocar as tabelas dentro da pasta tabelas
 tabelas <- carregar_tabelas(pasta_dados)
 
-# Função de pré-processamento coletivo
+# Função de pré-processamento coletivo (todas as tabelas)
 preprocess_coletivo <- function(df) {
   df %>%
     janitor::clean_names() %>%
@@ -92,6 +93,12 @@ preprocess_individual <- function(df) {
 
 # Carregar apenas a tabela de interesse
 alunos_final <- tabelas[["alunos-final"]]
+
+# Ver os nomes das colunas
+colnames(alunos_final)
+
+# Visualizar as 5 primeiras linhas
+head(alunos_final, 5)
 
 # =====================================================
 # 2. Enriquecimento dos dados
