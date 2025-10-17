@@ -178,10 +178,44 @@ ggplot(taxas_evasao, aes(x = periodo_label, y = taxa_cumulativa, group = curricu
   geom_point(size = 2) +
   scale_color_manual(values = c("1999" = "#1f77b4", "2017" = "#ff7f0e")) +
   labs(
-    title = "📊 Evolução da Taxa Cumulativa de Evasão por Currículo",
+    title = "Evolução da Taxa Cumulativa de Evasão por Currículo",
     x = "Período de Ingresso",
     y = "Taxa Cumulativa (%)",
     color = "Currículo"
   ) +
   theme_minimal(base_size = 14) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# =========================================================
+
+library(ggplot2)
+library(scales)
+
+ggplot(taxas_evasao, aes(x = periodo_label, y = taxa_cumulativa, 
+                         group = factor(curriculo), color = factor(curriculo),
+                         shape = factor(curriculo))) +
+  geom_line(size = 1.3, alpha = 0.9) +
+  geom_point(size = 3.8) +
+  geom_text(aes(label = round(taxa_cumulativa, 1)), 
+            vjust = -0.8, size = 3.2, show.legend = FALSE, check_overlap = TRUE) +
+  scale_color_manual(values = c("1999" = "#003366", "2017" = "#FF7F0E"),
+                     labels = c("Currículo 1999", "Currículo 2017")) +
+  scale_shape_manual(values = c("1999" = 15, "2017" = 17)) +  # 15 = quadrado, 17 = triângulo
+  scale_y_continuous(labels = percent_format(scale = 1)) +
+  labs(
+    title = "Evolução da Taxa Cumulativa de Evasão",
+    subtitle = "Comparativo entre os currículos 1999 e 2017",
+    x = "Período de Ingresso",
+    y = "Taxa Cumulativa de Evasão (%)",
+    ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+    plot.subtitle = element_text(size = 13, hjust = 0.5, color = "gray40"),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 11),
+    axis.text.y = element_text(size = 12),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    legend.position = "top",
+    legend.title = element_text(face = "bold")
+  )
