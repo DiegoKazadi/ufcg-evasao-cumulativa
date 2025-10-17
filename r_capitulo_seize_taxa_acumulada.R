@@ -167,3 +167,21 @@ print(sort(unique(alunos_final$periodo_label)))
 cat("\n📈 Frequência de ingressantes por período:\n")
 print(table(alunos_final$periodo_label))
 
+# ===================================================
+# 9. Grafico
+# ===================================================
+
+library(ggplot2)
+
+ggplot(taxas_evasao, aes(x = periodo_label, y = taxa_cumulativa, group = curriculo, color = factor(curriculo))) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  scale_color_manual(values = c("1999" = "#1f77b4", "2017" = "#ff7f0e")) +
+  labs(
+    title = "📊 Evolução da Taxa Cumulativa de Evasão por Currículo",
+    x = "Período de Ingresso",
+    y = "Taxa Cumulativa (%)",
+    color = "Currículo"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
