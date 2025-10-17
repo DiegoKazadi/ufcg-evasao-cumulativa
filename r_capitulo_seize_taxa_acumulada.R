@@ -188,26 +188,43 @@ ggplot(taxas_evasao, aes(x = periodo_label, y = taxa_cumulativa, group = curricu
 
 # =========================================================
 
+
 library(ggplot2)
 library(scales)
 
-ggplot(taxas_evasao, aes(x = periodo_label, y = taxa_cumulativa, 
-                         group = factor(curriculo), color = factor(curriculo),
-                         shape = factor(curriculo))) +
+ggplot(taxas_evasao, aes(
+  x = periodo_label,
+  y = taxa_cumulativa,
+  group = factor(curriculo),
+  color = factor(curriculo),
+  shape = factor(curriculo)
+)) +
   geom_line(size = 1.3, alpha = 0.9) +
-  geom_point(size = 3.8) +
-  geom_text(aes(label = round(taxa_cumulativa, 1)), 
-            vjust = -0.8, size = 3.2, show.legend = FALSE, check_overlap = TRUE) +
-  scale_color_manual(values = c("1999" = "#003366", "2017" = "#FF7F0E"),
-                     labels = c("Currículo 1999", "Currículo 2017")) +
-  scale_shape_manual(values = c("1999" = 15, "2017" = 17)) +  # 15 = quadrado, 17 = triângulo
+  geom_point(size = 3.5) +
+  geom_text(
+    aes(label = sprintf("%.1f", taxa_cumulativa)),
+    color = "black",
+    vjust = -1.2,   # acima do ponto
+    size = 3.8,
+    show.legend = FALSE
+  ) +
+  scale_color_manual(
+    values = c("1999" = "#003366", "2017" = "#FF8C00"),
+    labels = c("1999", "2017")
+  ) +
+  scale_shape_manual(
+    values = c("1999" = 15, "2017" = 17),
+    labels = c("1999", "2017")
+  ) +
   scale_y_continuous(labels = percent_format(scale = 1)) +
   labs(
     title = "Evolução da Taxa Cumulativa de Evasão",
-    subtitle = "Comparativo entre os currículos 1999 e 2017",
+    subtitle = "Comparativo entre Currículos 1999 e 2017",
     x = "Período de Ingresso",
-    y = "Taxa Cumulativa de Evasão (%)",
-    ) +
+    y = "Taxa Cumulativa (%)",
+    color = "Currículo",
+    shape = "Currículo"
+  ) +
   theme_minimal(base_size = 14) +
   theme(
     plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
@@ -216,6 +233,10 @@ ggplot(taxas_evasao, aes(x = periodo_label, y = taxa_cumulativa,
     axis.text.y = element_text(size = 12),
     panel.grid.minor = element_blank(),
     panel.grid.major.x = element_blank(),
-    legend.position = "top",
-    legend.title = element_text(face = "bold")
+    legend.position = "bottom",        # legenda abaixo do eixo X
+    legend.direction = "horizontal",   # horizontal
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(size = 12),
+    legend.box.spacing = unit(0.5, "lines")
   )
+
