@@ -50,7 +50,7 @@ carregar_tabelas <- function(pasta) {
 # Caminhos possíveis
 # =====================================================
 # Windows
-# pasta_dados <- "C:/Users/Big Data/Documents/Master UFCG/Semestre 2025/Tabelas"
+pasta_dados <- "C:/Users/Big Data/Documents/Master UFCG/Semestre 2025.2/Tabelas"
 
 # Linux
 pasta_dados <- "/home/diego/Documentos/Tabelas"
