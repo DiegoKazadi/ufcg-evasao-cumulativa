@@ -413,3 +413,204 @@ ggplot(taxas_idade, aes(
     legend.box.spacing = unit(0.5, "lines")
   )
 
+# =====================================================
+# 12. Análise por Faixa Etária e Período – Gráficos Separados
+# =====================================================
+
+library(dplyr)
+library(ggplot2)
+library(scales)
+
+# Criar faixas etárias
+alunos_final <- alunos_final %>%
+  mutate(
+    faixa_etaria = case_when(
+      `idade_aproximada_no_ingresso` < 20 ~ "< 20",
+      `idade_aproximada_no_ingresso` >= 20 & `idade_aproximada_no_ingresso` <= 24 ~ "20-24",
+      `idade_aproximada_no_ingresso` >= 25 & `idade_aproximada_no_ingresso` <= 29 ~ "25-29",
+      `idade_aproximada_no_ingresso` >= 30 & `idade_aproximada_no_ingresso` <= 34 ~ "30-34",
+      `idade_aproximada_no_ingresso` >= 35 ~ "35+",
+      TRUE ~ NA_character_
+    )
+  )
+
+# Filtrar períodos válidos
+dados_validos <- alunos_final %>%
+  filter(
+    (curriculo == 1999 & periodo_de_ingresso >= 2011.1 & periodo_de_ingresso <= 2017.2) |
+      (curriculo == 2017 & periodo_de_ingresso >= 2018.1 & periodo_de_ingresso <= 2022.2)
+  )
+
+# Calcular taxas acumuladas por faixa etária e período
+taxas_idade <- dados_validos %>%
+  group_by(curriculo, periodo_label, faixa_etaria) %>%
+  summarise(
+    total_ingressantes = n(),
+    evadidos = sum(status == "INATIVO" & tolower(tipo_de_evasao) != "graduado"),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    taxa_evasao_acumulada = round((evadidos / total_ingressantes) * 100, 2)
+  ) %>%
+  arrange(curriculo, periodo_label, faixa_etaria)
+
+# Listar os quatro primeiros períodos distintos
+periodos_distintos <- sort(unique(taxas_idade$periodo_label))[1:4]
+
+# Loop para gerar gráficos separados por período
+for (per in periodos_distintos) {
+  
+  dados_periodo <- taxas_idade %>% filter(periodo_label == per)
+  
+  p <- ggplot(dados_periodo, aes(
+    x = faixa_etaria,
+    y = taxa_evasao_acumulada,
+    group = factor(curriculo),
+    color = factor(curriculo),
+    shape = factor(curriculo)
+  )) +
+    geom_line(size = 1.2) +
+    geom_point(size = 3.5) +
+    geom_text(
+      aes(label = sprintf("%.1f", taxa_evasao_acumulada)),
+      color = "black",
+      vjust = -1.2,
+      size = 3.5,
+      show.legend = FALSE
+    ) +
+    scale_color_manual(
+      values = c("1999" = "#003366", "2017" = "#FF8C00"),
+      labels = c("1999", "2017")
+    ) +
+    scale_shape_manual(
+      values = c("1999" = 15, "2017" = 17),
+      labels = c("1999", "2017")
+    ) +
+    scale_y_continuous(labels = percent_format(scale = 1), limits = c(0, max(dados_periodo$taxa_evasao_acumulada)*1.1)) +
+    labs(
+      title = paste("Taxa Cumulativa de Evasão – Período", per),
+      subtitle = "Comparativo entre Currículos 1999 e 2017",
+      x = "Faixa Etária",
+      y = "Taxa de Evasão (%)",
+      color = "Currículo",
+      shape = "Currículo"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+      axis.text.y = element_text(size = 12),
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_blank(),
+      legend.position = "bottom",
+      legend.direction = "horizontal",
+      legend.title = element_text(face = "bold"),
+      legend.text = element_text(size = 12),
+      legend.box.spacing = unit(0.5, "lines")
+    )
+  
+  print(p)
+}
+
+# =====================================================
+# Script: Curvas de Evasão por Faixa Etária e Período
+# =====================================================
+
+library(dplyr)
+library(ggplot2)
+library(scales)
+
+# Criar faixas etárias
+alunos_final <- alunos_final %>%
+  mutate(
+    faixa_etaria = case_when(
+      `idade_aproximada_no_ingresso` < 20 ~ "< 20",
+      `idade_aproximada_no_ingresso` >= 20 & `idade_aproximada_no_ingresso` <= 24 ~ "20-24",
+      `idade_aproximada_no_ingresso` >= 25 & `idade_aproximada_no_ingresso` <= 29 ~ "25-29",
+      `idade_aproximada_no_ingresso` >= 30 & `idade_aproximada_no_ingresso` <= 34 ~ "30-34",
+      `idade_aproximada_no_ingresso` >= 35 ~ "35+",
+      TRUE ~ NA_character_
+    )
+  )
+
+# Filtrar apenas períodos válidos e primeiros 4 períodos
+periodos_analise <- sort(unique(alunos_final$periodo_label))[1:4]
+
+dados_validos <- alunos_final %>%
+  filter(periodo_label %in% periodos_analise)
+
+# Calcular taxa de evasão cumulativa por faixa etária, período e currículo
+taxas_idade <- dados_validos %>%
+  group_by(curriculo, periodo_label, faixa_etaria) %>%
+  summarise(
+    total_ingressantes = n(),
+    evadidos = sum(status == "INATIVO" & tolower(tipo_de_evasao) != "graduado"),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    taxa_evasao_acumulada = round((evadidos / total_ingressantes) * 100, 2)
+  ) %>%
+  arrange(curriculo, periodo_label, faixa_etaria)
+
+# =====================================================
+# Função para gerar gráfico por período
+# =====================================================
+plot_periodo <- function(periodo, df) {
+  df_periodo <- df %>% filter(periodo_label == periodo)
+  
+  ggplot(df_periodo, aes(
+    x = faixa_etaria,
+    y = taxa_evasao_acumulada,
+    group = factor(curriculo),
+    color = factor(curriculo),
+    shape = factor(curriculo)
+  )) +
+    geom_line(size = 1.3) +
+    geom_point(size = 4) +
+    geom_text(
+      aes(label = sprintf("%.1f", taxa_evasao_acumulada)),
+      color = "black",
+      vjust = -1.2,
+      size = 3.5,
+      show.legend = FALSE
+    ) +
+    scale_color_manual(
+      values = c("1999" = "#003366", "2017" = "#FF8C00"),
+      labels = c("1999", "2017")
+    ) +
+    scale_shape_manual(
+      values = c("1999" = 15, "2017" = 17),  # quadrado e triângulo
+      labels = c("1999", "2017")
+    ) +
+    scale_y_continuous(labels = percent_format(scale = 1)) +
+    labs(
+      title = paste0("Evasão Cumulativa - Período ", periodo),
+      subtitle = "Comparativo Currículos 1999 (azul) e 2017 (amarelo escuro)",
+      x = "Faixa Etária no Ingresso",
+      y = "Taxa Cumulativa (%)",
+      color = "Currículo",
+      shape = "Currículo"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_blank(),
+      legend.position = "bottom",
+      legend.direction = "horizontal"
+    )
+}
+
+# =====================================================
+# Gerar gráficos para os 4 primeiros períodos
+# =====================================================
+graficos_periodos <- lapply(periodos_analise, plot_periodo, df = taxas_idade)
+
+# Para visualizar cada gráfico separadamente
+for (g in graficos_periodos) {
+  print(g)
+}
+s
