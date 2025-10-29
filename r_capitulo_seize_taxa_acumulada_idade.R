@@ -240,3 +240,126 @@ ggplot(taxas_evasao, aes(
     legend.box.spacing = unit(0.5, "lines")
   )
 
+# =====================================================
+# 10b. Tratamento robusto da variável idade e análise
+# =====================================================
+
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+
+# --- 1) localizar a coluna de idade automaticamente ---
+idade_col_candidates <- names(alunos_final)[grepl("idade", names(alunos_final), ignore.case = TRUE)]
+if(length(idade_col_candidates) == 0) {
+  cat("⚠️ Não encontrei nenhuma coluna com 'idade'. Colunas disponíveis:\n")
+  print(names(alunos_final))
+  stop("Por favor, informe qual coluna representa a idade ou renomeie-a para algo contendo 'idade'.")
+}
+# usar a primeira candidata encontrada (ajuste se quiser outra)
+idade_col <- idade_col_candidates[1]
+cat("➡️ Usando a coluna de idade:", idade_col, "\n")
+
+# --- 2) criar coluna numérica 'idade' -- limpa textos como '25 anos', 'aprox 24' ---
+alunos_final <- alunos_final %>%
+  mutate(
+    idade_raw = .data[[idade_col]],
+    # transformar em character antes de extrair dígitos
+    idade_raw = as.character(idade_raw),
+    idade = str_extract(idade_raw, "\\d{1,3}"),    # pega os dígitos
+    idade = as.numeric(idade)
+  )
+
+# verificar quantos NA depois da conversão:
+na_idade <- sum(is.na(alunos_final$idade))
+cat("Número de registros sem idade numérica:", na_idade, "\n")
+
+# --- 3) criar faixa etária (ajuste os cortes se quiser) ---
+alunos_final <- alunos_final %>%
+  mutate(faixa_etaria = case_when(
+    !is.na(idade) & idade < 20 ~ "<20",
+    !is.na(idade) & idade >= 20 & idade < 25 ~ "20-24",
+    !is.na(idade) & idade >= 25 & idade < 30 ~ "25-29",
+    !is.na(idade) & idade >= 30 & idade < 35 ~ "30-34",
+    !is.na(idade) & idade >= 35 ~ ">=35",
+    TRUE ~ "Sem dado"
+  ))
+
+# --- 4) preparar coluna numérica para ordenar períodos (assumindo periodo_label como 'YYYY.S') ---
+# Se ainda não existir periodo_label, tenta reconstruir a partir do campo original
+if(!"periodo_label" %in% names(alunos_final)) {
+  # tenta usar 'periodo_de_ingresso' se existir
+  if("periodo_de_ingresso" %in% names(alunos_final)) {
+    alunos_final <- alunos_final %>%
+      mutate(
+        ano_ing = floor(periodo_de_ingresso),
+        semestre_ing = ifelse((periodo_de_ingresso - ano_ing) < 0.2, 1, 2),
+        periodo_label = paste0(ano_ing, ".", semestre_ing)
+      )
+  } else {
+    stop("Não encontrei 'periodo_label' nem 'periodo_de_ingresso'.")
+  }
+}
+
+# criar periodo_numeric para ordenar (ex: "2011.1" -> 2011.1 numeric)
+alunos_final <- alunos_final %>%
+  mutate(periodo_numeric = as.numeric(periodo_label))
+
+# --- 5) marcar evadido (1/0) ---
+alunos_final <- alunos_final %>%
+  mutate(
+    evadido = ifelse(
+      toupper(trimws(status)) == "INATIVO" & tolower(tipo_de_evasao) != "graduado",
+      1, 0
+    )
+  )
+
+# --- 6) calcular totais por periodo x faixa etaria ---
+tabela_base <- alunos_final %>%
+  filter(!is.na(faixa_etaria)) %>%   # opcional: remover "Sem dado" se preferir
+  group_by(periodo_label, periodo_numeric, faixa_etaria) %>%
+  summarise(
+    total_ingressantes = n(),
+    total_evadidos = sum(evadido, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(faixa_etaria, periodo_numeric)
+
+# --- 7) calcular evasões acumuladas por faixa (ordenadas por periodo_numeric) e taxa relativa ao total de ingressantes daquela faixa ---
+tabela_idade <- tabela_base %>%
+  group_by(faixa_etaria) %>%
+  arrange(periodo_numeric, .by_group = TRUE) %>%
+  mutate(
+    evasoes_acumuladas = cumsum(total_evadidos),
+    total_ingressantes_faixa = sum(total_ingressantes, na.rm = TRUE),
+    taxa_evasao_acumulada = round((evasoes_acumuladas / total_ingressantes_faixa) * 100, 2)
+  ) %>%
+  ungroup() %>%
+  # selecionar colunas pedidas e renomear para português limpo
+  select(
+    Periodo = periodo_label,
+    Faixa_Etaria = faixa_etaria,
+    Total_Ingressantes = total_ingressantes,
+    Evadidos = total_evadidos,
+    Evasoes_Acumuladas = evasoes_acumuladas,
+    Taxa_Evasao_Acumulada = taxa_evasao_acumulada
+  )
+
+# --- 8) mostrar a tabela final ---
+cat("\n📊 Tabela: Evasão Cumulativa por Faixa Etária e Período\n")
+print(tabela_idade, n = nrow(tabela_idade))
+
+# --- 9) Gráfico para visualização ---
+ggplot(tabela_idade, aes(x = Periodo, y = Taxa_Evasao_Acumulada, group = Faixa_Etaria, color = Faixa_Etaria)) +
+  geom_line(size = 1.1) +
+  geom_point(size = 2.5) +
+  geom_text(aes(label = sprintf("%.1f", Taxa_Evasao_Acumulada)), vjust = -0.8, size = 3, show.legend = FALSE) +
+  scale_y_continuous(labels = percent_format(scale = 1)) +
+  labs(
+    title = "Evasão Cumulativa por Faixa Etária",
+    x = "Período de Ingresso",
+    y = "Taxa Cumulativa (%)",
+    color = "Faixa Etária"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom")
