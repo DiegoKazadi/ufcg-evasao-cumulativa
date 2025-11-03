@@ -121,8 +121,9 @@ if (nrow(check_inconsistencias) > 0) {
 } else {
   cat(" Nenhuma inconsistência encontrada.\n")
 }
+
 # =====================================================
-# 4. Funções auxiliares ajustadas
+# 4. Funções auxiliares
 # =====================================================
 
 # Função para filtrar evasão real (ignorar graduados)
@@ -134,39 +135,36 @@ filtrar_evasao <- function(df) {
     )
 }
 
-# Função para calcular taxas cumulativas de evasão por coorte
+# Função para calcular taxas cumulativas de evasão
 calcular_taxas_cumulativas <- function(df) {
   
-  # Filtrar apenas os períodos válidos por currículo
+  # Filtrar períodos válidos por currículo
   df <- df %>%
     filter(
       (curriculo == 1999 & periodo_de_ingresso >= 2011.1 & periodo_de_ingresso <= 2017.2) |
         (curriculo == 2017 & periodo_de_ingresso >= 2018.1 & periodo_de_ingresso <= 2022.2)
     )
   
-  # Totais de ingressantes por coorte
+  # Totais de ingressantes
   totais <- df %>%
     group_by(curriculo, periodo_de_ingresso) %>%
     summarise(total_ingressantes = n(), .groups = "drop")
   
-  # Totais de evasões reais (ignorando graduados)
+  # Totais de evasões reais
   evasoes <- df %>%
     filtrar_evasao() %>%
     group_by(curriculo, periodo_de_ingresso) %>%
     summarise(total_evasoes = n(), .groups = "drop")
   
-  # Combinar dados
+  # Juntar bases e calcular acumulado
   dados <- totais %>%
     left_join(evasoes, by = c("curriculo", "periodo_de_ingresso")) %>%
     mutate(total_evasoes = ifelse(is.na(total_evasoes), 0, total_evasoes)) %>%
-    arrange(curriculo, periodo_de_ingresso)
-  
-  # Calcular evasões acumuladas e taxa cumulativa respeitando coorte
-  dados <- dados %>%
+    arrange(curriculo, periodo_de_ingresso) %>%
     group_by(curriculo) %>%
     mutate(
       evasoes_acumuladas = cumsum(total_evasoes),
-      taxa_cumulativa = round((evasoes_acumuladas / sum(total_ingressantes)) * 100, 2)
+      taxa_cumulativa = round((evasoes_acumuladas / total_ingressantes) * 100, 2)
     ) %>%
     ungroup()
   
@@ -177,15 +175,21 @@ calcular_taxas_cumulativas <- function(df) {
 # 5. Execução
 # =====================================================
 
+# Calcular taxas cumulativas de evasão
 taxas_evasao <- calcular_taxas_cumulativas(alunos_final)
 
-cat("\n📊 Taxas Cumulativas de Evasão por Currículo e Período de Ingresso:\n")
+# Visualizar no terminal (sem gráficos)
+print(head(taxas_evasao, 20))
+
+# Visualizar todos os valores dos 2 currículos
 print(taxas_evasao, n = nrow(taxas_evasao))
-
+s
 # =====================================================
-# 6. Diagnóstico de distribuição de ingressos
+# 6. Diagnóstico de período de ingresso
 # =====================================================
 
-cat("\n📅 Diagnóstico dos períodos de ingresso:\n")
+# Valores únicos de período
 print(sort(unique(alunos_final$periodo_de_ingresso)))
+
+# Frequência por período
 print(table(alunos_final$periodo_de_ingresso))

@@ -90,6 +90,7 @@ preprocess_individual <- function(df) {
       ~ iconv(.x, from = "", to = "UTF-8", sub = "byte") %>% trimws()
     ))
 }
+
 # =====================================================
 # 1. Carregar tabela de interesse
 # =====================================================
@@ -104,42 +105,60 @@ print(head(alunos_final, 5))
 
 cat("\nPrimeiros valores de periodo_de_ingresso:\n")
 print(head(alunos_final$periodo_de_ingresso))
-
 # =====================================================
 # 2. Enriquecimento dos dados
 # =====================================================
 
 # Garantir ano e semestre separados
-# Observação: no seu formato, semestre 1 vem com .1 e semestre 2 com .2
-# Logo, a condição correta é: se a parte decimal é 0.1 → 1º semestre; se é 0.2 → 2º semestre
 alunos_final <- alunos_final %>%
   mutate(
     ano_ingresso = floor(periodo_de_ingresso),
-    semestre_ingresso = ifelse(abs(periodo_de_ingresso %% 1 - 0.1) < 1e-6, 1, 2)
+    semestre_ingresso = ifelse(periodo_de_ingresso %% 1 == 0.1, 1, 2)
   )
 
-# Confirmar criação das novas colunas
-cat("\nVerificando colunas criadas:\n")
-print(head(alunos_final %>%
-             select(periodo_de_ingresso, ano_ingresso, semestre_ingresso), 10))
+# Criar coluna de análise de currículo baseado no ano de ingresso
+# Alunos antes de 2018 seguem currículo 1999 para análise preliminar
+alunos_final <- alunos_final %>%
+  mutate(
+    curriculo_analise = case_when(
+      ano_ingresso < 2018 ~ 1999,
+      TRUE ~ curriculo
+    )
+  )
 
 # =====================================================
-# 3. Verificação de integridade
+# 3. Verificação de integridade (alertas)
 # =====================================================
-check_inconsistencias <- alunos_final %>%
-  filter((ano_ingresso < 2018 & curriculo == 2017) |
-           (ano_ingresso >= 2018 & curriculo == 1999)) %>%
+
+# Alunos que ingressaram antes de 2018 mas já têm currículo 2017
+check_inconsistencias_anteriores <- alunos_final %>%
+  filter(ano_ingresso < 2018 & curriculo == 2017) %>%
   distinct(matricula, ano_ingresso, curriculo)
 
-# Mostrar inconsistências encontradas
+# Alunos que ingressaram em 2018 ou depois mas têm currículo antigo 1999
+check_inconsistencias_posteriores <- alunos_final %>%
+  filter(ano_ingresso >= 2018 & curriculo == 1999) %>%
+  distinct(matricula, ano_ingresso, curriculo)
+
+# Mostrar resultados de forma organizada
 cat("\n==============================\n")
-if (nrow(check_inconsistencias) > 0) {
-  cat("⚠️ Inconsistências encontradas:\n")
-  print(check_inconsistencias)
+if (nrow(check_inconsistencias_anteriores) > 0) {
+  cat("⚠️ Alunos que ingressaram antes de 2018 com currículo 2017 (revisar depois de incluir disciplinas):\n")
+  print(check_inconsistencias_anteriores)
 } else {
-  cat("✅ Nenhuma inconsistência encontrada.\n")
+  cat("✅ Nenhuma inconsistência encontrada em ingressos anteriores a 2018.\n")
+}
+
+cat("\n------------------------------\n")
+
+if (nrow(check_inconsistencias_posteriores) > 0) {
+  cat("⚠️ Alunos que ingressaram a partir de 2018 com currículo 1999 (revisar depois de incluir disciplinas):\n")
+  print(check_inconsistencias_posteriores)
+} else {
+  cat("✅ Nenhuma inconsistência encontrada em ingressos a partir de 2018.\n")
 }
 cat("==============================\n")
+
 
 # =====================================================
 # 4. Funções auxiliares
