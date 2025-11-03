@@ -382,3 +382,69 @@ print(
     digits = 2
   )
 )
+
+# =====================================================
+# Gráficos separados por Currículo
+# =====================================================
+
+library(ggplot2)
+library(scales)
+library(dplyr)
+
+# Cores e símbolos
+cores_curriculos <- c("1999" = "#003366", "2017" = "#FF8C00")
+formas_curriculos <- c("1999" = 15, "2017" = 17)
+
+# -----------------------------------------------------
+# Função auxiliar para gerar gráfico por currículo
+# -----------------------------------------------------
+plot_por_curriculo <- function(df, curriculo_escolhido) {
+  df_filtrado <- df %>% filter(curriculo == curriculo_escolhido)
+  
+  ggplot(
+    df_filtrado,
+    aes(x = periodo_label, y = taxa_cumulativa, group = faixa_etaria, color = faixa_etaria)
+  ) +
+    geom_line(linewidth = 1.3) +
+    geom_point(size = 4, shape = ifelse(curriculo_escolhido == "1999", 15, 17)) +
+    geom_text(
+      aes(label = paste0(taxa_cumulativa, "%")),
+      vjust = -1,
+      size = 3.5,
+      color = "black",
+      show.legend = FALSE
+    ) +
+    scale_color_brewer(palette = "Dark2") +
+    scale_y_continuous(labels = percent_format(scale = 1)) +
+    labs(
+      title = paste("Evasão Cumulativa por Faixa Etária — Currículo", curriculo_escolhido),
+      subtitle = ifelse(curriculo_escolhido == "1999", 
+                        "Representado em azul escuro e formato de cubo",
+                        "Representado em amarelo escuro e triângulo"),
+      x = "Período Letivo",
+      y = "Taxa Cumulativa de Evasão (%)",
+      color = "Faixa Etária"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      legend.position = "bottom",
+      legend.direction = "horizontal",
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_blank()
+    )
+}
+
+# -----------------------------------------------------
+# Gerar os dois gráficos
+# -----------------------------------------------------
+
+grafico_1999 <- plot_por_curriculo(taxa_cumulativa_idade, "1999")
+grafico_2017 <- plot_por_curriculo(taxa_cumulativa_idade, "2017")
+
+# Exibir os dois gráficos
+grafico_1999
+grafico_2017
+
